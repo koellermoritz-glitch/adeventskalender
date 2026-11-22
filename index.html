@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dein Adventskalender</title>
+<style>
+body { background:#1b2a41; color:white; font-family:sans-serif; text-align:center; margin:0; padding:16px; }
+#raster { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; max-width:360px; margin:20px auto; }
+.tuer { aspect-ratio:1; font-size:22px; border:none; border-radius:12px; background:#c0392b; color:white; cursor:pointer; transition:transform .2s; }
+.tuer:hover { transform:scale(1.08); }
+.tuer.zu { background:#555; opacity:.6; }
+
+#overlay { position:fixed; inset:0; background:rgba(0,0,0,.7); display:none; align-items:center; justify-content:center; padding:16px; }
+#overlay.an { display:flex; }
+#karte { background:#243b55; border-radius:16px; padding:20px; max-width:340px; width:100%; animation:einblenden .6s ease; }
+#karte.finale { background:#3b2a10; border:2px solid gold; }
+#text { font-size:20px; line-height:1.4; }
+#schliessen { padding:8px 20px; border:none; border-radius:10px; background:#c0392b; color:white; font-size:16px; }
+
+.szene { position:relative; height:160px; border-radius:12px; margin-bottom:14px; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+.eis { background:linear-gradient(#cfeeff,#eaf9ff); }
+.wasser { background:linear-gradient(#4aa8d8,#1f6fa0); }
+.nacht { background:linear-gradient(#0b1530,#1d3557); }
+.warm { background:linear-gradient(#7a1f2b,#c0392b); }
+.gross { font-size:72px; }
+
+.laeufer, .tier, .flug, .schnuppe { position:absolute; }
+.laeufer { bottom:20px; font-size:44px; animation:gleiten 3.5s ease-in-out infinite; }
+.tier { top:55px; font-size:48px; animation:schwimmen 6s linear infinite; }
+.flug { top:40px; font-size:44px; animation:fliegen 5s linear infinite; }
+.schnuppe { font-size:40px; animation:schuss 2.5s ease-in infinite; }
+.puls { animation:puls 1s ease-in-out infinite; }
+.funkel { animation:funkeln 1.5s ease-in-out infinite; }
+.wackeln { animation:wackeln .8s ease-in-out infinite; }
+.flackern { animation:flackern .6s ease-in-out infinite alternate; }
+.wippen { transform-origin:bottom; animation:wippen 1.6s ease-in-out infinite; }
+
+.fall, .steig { position:absolute; font-size:20px; animation-timing-function:linear; animation-iteration-count:infinite; }
+.fall { top:-30px; animation-name:fallen; }
+.steig { bottom:-30px; animation-name:steigen; }
+
+@keyframes einblenden { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+@keyframes gleiten { 0% { left:-60px; transform:rotate(-8deg); } 50% { transform:rotate(8deg); } 100% { left:100%; transform:rotate(-8deg); } }
+@keyframes schwimmen { 0% { left:-60px; transform:translateY(0); } 25% { transform:translateY(-12px); } 50% { transform:translateY(0); } 75% { transform:translateY(12px); } 100% { left:100%; transform:translateY(0); } }
+@keyframes fliegen { 0% { left:-100px; transform:translateY(0); } 50% { transform:translateY(-20px); } 100% { left:100%; transform:translateY(0); } }
+@keyframes schuss { 0% { left:90%; top:-20px; opacity:0; } 20% { opacity:1; } 100% { left:-10%; top:140px; opacity:0; } }
+@keyframes puls { 0%,100% { transform:scale(1); } 50% { transform:scale(1.25); } }
+@keyframes funkeln { 0%,100% { opacity:1; transform:scale(1) rotate(0); } 50% { opacity:.4; transform:scale(1.2) rotate(20deg); } }
+@keyframes wackeln { 0%,100% { transform:rotate(0); } 25% { transform:rotate(-12deg); } 75% { transform:rotate(12deg); } }
+@keyframes flackern { from { filter:drop-shadow(0 0 6px orange); transform:scale(1); } to { filter:drop-shadow(0 0 22px gold); transform:scale(1.06); } }
+@keyframes wippen { 0%,100% { transform:rotate(-8deg); } 50% { transform:rotate(8deg); } }
+@keyframes fallen { to { transform:translateY(200px) rotate(180deg); } }
+@keyframes steigen { to { transform:translateY(-200px); } }
+</style>
+</head>
+<body>
+<h1>Für dich 🎄</h1>
+<div id="raster"></div>
+
+<div id="overlay" onclick="schliessen()">
+<div id="karte" onclick="event.stopPropagation()">
+<div id="szene"></div>
+<p id="text"></p>
+<button id="schliessen" onclick="schliessen()">Schließen</button>
+</div>
+</div>
+
+<script>
+const TESTMODUS = false;
+
+const tuerchen = {
+1: { text: "Yoooo, was geht aaabbbb! Ab heute bekommst du jeden Tag ein kleines Geschenk von mir ❤️" },
+2: { szene: "eis", text: "Ich musste dabei an dich denken." },
+3: { text: "Du bringst mich zum Lachen, auch wenn der Tag grau war. Du bist mein Licht in der Dunkelheit" },
+4: { szene: "schildkroete", text: "Ich weiß du liebst sie..." },
+5: { text: "Ich bin stolz auf dich und auf alles, was du jeden Tag machst. Dein Trainig, die Schule das alles... verdient so viel Anerkennung und ich möchte sie dir schenken" },
+6: { szene: "schnee", text: "Wenn die Kälte kommt, ich wärme dich, ich werde immer für dich da sein" },
+7: { text: "Dein Lächeln strahlt heller als das Licht der Sonne. Egal wo ich bin, ich denke daran, es ist bei mir wie das Licht" },
+8: { szene: "herz", text: "Dort wirst du immer sein" },
+9: { text: "Mit dir fühlt sich selbst ein grauer Dezembertag warm an." },
+10: { szene: "mond", text: "Zwischen all den Sternen bist du mein Mond." },
+11: { text: "Du bist stärker, als du denkst, ich weiß das." },
+12: { szene: "schlitten", text: "Ho ho ho, die Rentiere sind unterwegs! Ange wurde bereits geholt, die Wichtel arbeiten" },
+13: { text: "In meinem Leben sah ich schon viele Augen. Grau, Blau, Grün, so bitte steh immer mit ihnen strahlend vor meiner Tür, den verliebt bin ich in deine" },
+14: { szene: "geschenk", text: "Diese Überraschung habe ich nur für dich verpackt." },
+15: { text: "Ich freue mich auf jede gemeinsame Minute, Stunde, Tage mit dir. Egal wie kurz sie sind, hauptsache sie sind mit dir" },
+16: { szene: "kerze", text: "Ein Moment zum Entpannen und Kuscheln. Ich wünschte ich könnte jetzt bei dir sein" },
+17: { text: "Du siehst einfach wunderschön aus, egal was du trägst. Ich konnte es nicht einmal beschreiben." },
+18: { szene: "schneemann", text: "Pass gut auf ihn auf." },
+19: { text: "Wenn du auf dem Eis stehst, bin ich dein größter Fan, auch wenn ich nicht da bin" },
+20: { szene: "herzen", text: "Die letzten vier Tage, bis zum Fest der Liebe." },
+21: { text: "Egal was kommt: Ich bin an deiner Seite." },
+22: { szene: "sternschnuppe", text: "Wünsch dir was und ich erfülle es dir" },
+23: { text: "Morgen ist Weihnachten, aber vorher möchte ich dir noch etwas sagen. Du bedeutest mir unglaublich viel, du hast das Jahr für mich so viel schöner gemacht und dank dir... endet es mit wundervollen Momenten ❤️" },
+24: { szene: "baum", text: "Frohe Weihnachten! Du bist mein schönstes Geschenk, eins das ich niemals hergeben würde. ich freue mich auf dich.  ❤️" }
+};
+
+function streuen(emojis, anzahl, klasse) {
+let html = "";
+for (let i = 0; i < anzahl; i++) {
+const links = Math.random() * 90;
+const delay = Math.random() * 3;
+const dauer = 3 + Math.random() * 3;
+html += `<span class="${klasse}" style="left:${links}%;animation-delay:${delay}s;animation-duration:${dauer}s">${emojis[i % emojis.length]}</span>`;
+}
+return html;
+}
+
+const szenen = {
+eis: { farbe: "eis", html: () => `<span class="laeufer">⛸️</span>` },
+schildkroete: { farbe: "wasser", html: () => streuen(["🫧"], 6, "steig") + `<span class="tier">🐢</span>` },
+schnee: { farbe: "nacht", html: () => streuen(["❄️"], 14, "fall") },
+herz: { farbe: "warm", html: () => `<span class="gross puls">❤️</span>` },
+mond: { farbe: "nacht", html: () => `<span class="gross funkel">🌙</span>` },
+schlitten: { farbe: "nacht", html: () => `<span class="flug">🦌🛷</span>` },
+geschenk: { farbe: "warm", html: () => `<span class="gross wackeln">🎁</span>` },
+kerze: { farbe: "nacht", html: () => `<span class="gross flackern">🕯️</span>` },
+schneemann: { farbe: "nacht", html: () => streuen(["❄️"], 8, "fall") + `<span class="gross wippen">⛄</span>` },
+herzen: { farbe: "warm", html: () => streuen(["💗", "💖", "💕"], 14, "steig") },
+sternschnuppe: { farbe: "nacht", html: () => `<span class="schnuppe">🌠</span>` },
+baum: { farbe: "nacht", html: () => streuen(["✨", "⭐", "🎉", "❤️"], 24, "fall") + `<span class="gross puls">🎄</span>` }
+};
+
+function istOffen(nr) {
+return TESTMODUS || new Date() >= new Date(2026, 11, nr);
+}
+
+function oeffne(nr) {
+const szeneEl = document.getElementById("szene");
+const textEl = document.getElementById("text");
+const offen = istOffen(nr);
+
+szeneEl.style.display = "none";
+szeneEl.innerHTML = "";
+document.getElementById("karte").classList.toggle("finale", nr === 24 && offen);
+
+if (!offen) {
+textEl.textContent = "Dieses Türchen öffnet sich am " + nr + ". Dezember 😉";
+} else {
+const t = tuerchen[nr];
+textEl.textContent = t.text;
+if (t.szene) {
+const s = szenen[t.szene];
+szeneEl.className = "szene " + s.farbe;
+szeneEl.innerHTML = s.html();
+szeneEl.style.display = "flex";
+}
+}
+document.getElementById("overlay").classList.add("an");
+}
+
+function schliessen() {
+document.getElementById("overlay").classList.remove("an");
+document.getElementById("szene").innerHTML = "";
+}
+
+const raster = document.getElementById("raster");
+for (let nr = 1; nr <= 24; nr++) {
+const b = document.createElement("button");
+b.className = "tuer" + (istOffen(nr) ? "" : " zu");
+b.textContent = nr;
+b.onclick = () => oeffne(nr);
+raster.appendChild(b);
+}
+</script>
+</body>
+</html>
